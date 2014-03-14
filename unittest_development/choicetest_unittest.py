@@ -11,6 +11,7 @@ __license__ = "TBC"
 
 import choice
 import unittest
+import numpy as np
 
 class RangeTests(unittest.TestCase):
     def test_range(self):
@@ -30,6 +31,20 @@ class RangeTests(unittest.TestCase):
     
     def test_large_bad_range(self):      
         a = choice.choice2([0.1, 0.1, 0.2, 0.2, 0.2, 0.1, 0.09, 0.1])
+        b = 0
+        self.assertGreaterEqual(a, b)
+        
+    def test_huge_matrix(self):
+        arraySize = 1000
+        array = np.random.random(arraySize)
+        arraySum = np.sum(array)
+        arrayNormalised = array / arraySum
+        testValue = choice.choice2(arrayNormalised)
+        result = 0
+        self.assertGreaterEqual(testValue, result)
+        
+    def test_multirow_matrix(self):
+        a = choice.choice2([[0.5, 0.5], [0.5, 0.5]])
         b = 0
         self.assertGreaterEqual(a, b)
     
