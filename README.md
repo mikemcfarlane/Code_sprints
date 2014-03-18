@@ -14,3 +14,6 @@ Potential Outputs:
 - Learn something new.
 
 Mostly in Python and using IPython notebook http://ipython.org/notebook right now.
+
++ Unit tests http://nbviewer.ipython.org/github/mikemcfarlane/Code_sprints/blob/master/unittest_development/Unit_test_examples.ipynb?create=1
++ Probability theory 1 http://nbviewer.ipython.org/github/mikemcfarlane/Code_sprints/blob/master/Probabalistic_robotics_1/Probabalistic_robotics_1.ipynb?create=1
