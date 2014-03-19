@@ -2,6 +2,7 @@
 """ A basic Bayes Filter example.
     A mobile robot estimates the state of a door.
     First coding attempt, break code out into functions, better data structure.
+    Not working, out of time.
 
 """
 
