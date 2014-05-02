@@ -13,13 +13,17 @@ __copyright__ = "Copyright (c)Mike McFarlane 2014"
 __license__ = "TBC"
 
 
-def bayes_filter(bel_xt_1, ut, zt):
+def bayes_filter(bel_xt_1, prob_distribution):
     """ Simple Bayes filter.
-        Not implemented!
-        
+    
     """
-    bel_prediction_xt = None
-    bel_xt = normaliser * p_zt_xt * beliefPrediction_xt
+    n = 1
+    bel_prediction_xt = 0
+    
+    for p_xt_ut_xt_1 in prob_distribution:
+        bel_prediction_xt += p_xt_ut_xt_1 * bel_xt_1
+    bel_xt = n * p_zt_xt * bel_prediction_xt
+    n = 
     
     return bel_xt
 
@@ -30,13 +34,6 @@ def bayes_function_normaliser(*args):
     """
     n = 1 / sum(args)
     return n
-
-def bel_predictor():
-    """ Belief predictor.
-    Not implemented!
-    """
-    pass
-
 
 def main():
     """ Main.
@@ -68,7 +65,18 @@ def main():
     p_Xt_isOpen_Ut_doNothing_Xt_1_isClosed = 0.0
     p_Xt_isClosed_Ut_doNothing_Xt_1_isOpen = 0.0    
     p_Xt_isClosed_Ut_doNothing_Xt_1_isClosed = 1.0
-
+    
+    0,1,0,1.0
+    1,1,0,0.0
+    0,1,1,0.8
+    1,1,1,0.2
+    
+    0,0,0,1.0
+    0,0,1,0.0
+    1,0,0,0.0
+    1,0,1,1.0
+    
+    (0,1,0) : 1.0 
 
     # Initial value for normaliser,
     n = 1.0

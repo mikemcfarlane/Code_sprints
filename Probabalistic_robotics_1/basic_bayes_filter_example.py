@@ -42,17 +42,6 @@ p_Xt_isClosed_Ut_doNothing_Xt_1_isClosed = 1
 # Initial value for normaliser,
 n = 1.0
 
-
-def bayes_filter(bel_xt_1, ut, zt):
-    """ Simple Bayes filter.
-    
-    """
-    bel_prediction_xt = None
-    bel_xt = normaliser * p_zt_xt * beliefPrediction_xt
-    
-    return bel_xt
-
-
 def main():
     """ Main.
     
