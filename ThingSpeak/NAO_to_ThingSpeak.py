@@ -21,7 +21,7 @@ def main():
         try:
             conn.request("POST", "/update", params, headers)
             response = conn.getresponse()
-            print i
+            print i, msg
             print response.status, response.reason
             data = response.read()
             conn.close()
