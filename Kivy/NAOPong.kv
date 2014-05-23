@@ -21,7 +21,7 @@
 <NAOPongGame>:
     ball: pong_ball
     player1: player_left
-    player_nao: player_right
+    playerNAO: player_right
 
     canvas.before:
         Color:
@@ -47,7 +47,7 @@
         font_size: 40
         center_x: root.width * 3 / 4
         top: root.top - 10  
-        text: "NAO: " + str(root.player_nao.score)
+        text: "NAO: " + str(root.playerNAO.score)
             
     NAOPongBall:
         id: pong_ball
@@ -57,11 +57,11 @@
         id: player_left
         x: root.x
         center_y: root.center_y
-        player_id: 5
+        player_id: "player1"
             
     NAOPongPaddle:
         id: player_right
         x: root.width - self.width
         center_y: root.center_y
-        player_id: 6
+        player_id: "playerNAO"
         

@@ -5,6 +5,7 @@ from kivy.properties import NumericProperty, ReferenceListProperty,\
 from kivy.vector import Vector
 from kivy.clock import Clock
 from kivy.core.audio import SoundLoader
+from kivy.uix.button import Button
 
 from random import randint
 from time import sleep
@@ -27,7 +28,7 @@ class NAOPongPaddle(Widget):
     sound2 = SoundLoader.load('Sounds/bipReco2.wav')
     
     def bounce_ball(self, ball):
-        print "ball:", self.player_id
+        # print "ball:", self.player_id
         
         if self.collide_widget(ball):
             vx, vy = ball.velocity
@@ -35,7 +36,12 @@ class NAOPongPaddle(Widget):
             bounced = Vector(-1 * vx, vy)
             vel = bounced * 1.1
             ball.velocity = vel.x, vel.y + offset
-            self.sound1.play()
+            if self.player_id == "player1":
+                self.sound1.play()
+            elif self.player_id == "playerNAO":
+                self.sound2.play()
+            
+            
 
 class NAOPongBall(Widget):
     velocity_x = NumericProperty(0)
@@ -49,7 +55,7 @@ class NAOPongBall(Widget):
 class NAOPongGame(Widget):
     ball = ObjectProperty(None)
     player1 = ObjectProperty(None)
-    player_nao = ObjectProperty(None)
+    playerNAO = ObjectProperty(None)
 
     global tts
     
@@ -60,10 +66,12 @@ class NAOPongGame(Widget):
     def update(self, dt):
         # Call ball.move and other stuff.
         self.ball.move()
+        
+        # todo: update self.playerNAO.center_y based on NAOs current position
   
         # Bounce of paddles.
         self.player1.bounce_ball(self.ball)
-        self.player_nao.bounce_ball(self.ball)
+        self.playerNAO.bounce_ball(self.ball)
         
         # Bounce off top or bottom.
         if (self.ball.y < self.y) or (self.ball.top > self.top):
@@ -73,13 +81,15 @@ class NAOPongGame(Widget):
         if self.ball.x < self.x:
             id = animatedSpeech.post.say("I win!", BODYLANGUAGEMODECONFIG)
             animatedSpeech.wait(id, 0)
-            self.player_nao.score += 1
+            self.playerNAO.score += 1
             self.serve_ball(vel=(4, 0))
         if self.ball.x > self.width:
             id = animatedSpeech.post.say("Ouch", BODYLANGUAGEMODECONFIG)
             animatedSpeech.wait(id, 0)
             self.player1.score += 1
             self.serve_ball(vel=(-4, 0))
+            
+        # todo: start NAO moving to current ball.y position, use post
 
         #print "ball.x: {}, x: {}, ball.y: {}, y: {}".format(self.ball.x, self.x, self.ball.y, self.y)
             
@@ -87,15 +97,30 @@ class NAOPongGame(Widget):
         if touch.x < self.width / 3:
             self.player1.center_y = touch.y
         if touch.x > self.width - self.width / 3:
-            self.player_nao.center_y = touch.y
+            self.playerNAO.center_y = touch.y
         
             
 class NAOPongApp(App):
     def build(self):
+
         game = NAOPongGame()
         game.serve_ball()
         Clock.schedule_interval(game.update, 1.0 / 60.0)
+        
+        restartButton = Button(text = 'Restart!', center_x = game.width * 7, background_color = (1, 1, 1, 0.5))
+        
+        game.add_widget(restartButton)
+
+        def restart_game(obj):
+            print "restart"
+            game.player1.score = 0
+            game.playerNAO.score = 0
+            game.serve_ball()
+
+        restartButton.bind(on_release = restart_game)
+        
         return game
+
 
 def NAO_setup():
     """ Setup NAO inc proxies.
@@ -127,7 +152,7 @@ def NAO_instructions():
     """ Provides game instructions.
 
     """
-    global tts
+    global animatedSpeech
 
     id = animatedSpeech.post.say("We are going to play ping pong. I play on the right, you play on the left.", BODYLANGUAGEMODECONFIG)
     animatedSpeech.wait(id, 0)
@@ -135,7 +160,7 @@ def NAO_instructions():
 
 def main():
     NAO_setup()
-    #NAO_instructions()
+    # NAO_instructions()
     NAOPongApp().run()
     
 if __name__ == "__main__":
