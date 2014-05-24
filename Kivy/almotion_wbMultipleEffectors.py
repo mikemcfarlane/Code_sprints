@@ -47,65 +47,114 @@ def main(robotIP, PORT=9559):
     isAbsolute   = True
     useSensorValues = False
 
+    # ***************************************************************
+
     # Arms motion
-    effectorList = ["LArm", "RArm"]
+    effectorList = ["LArm"]
+    arm = "LArm"
 
-    frame        = motion.FRAME_ROBOT
+    frame = motion.FRAME_ROBOT
+    pathArm = []
 
-    # pathLArm
-    pathLArm = []
-    currentTf = motionProxy.getTransform("LArm", frame, useSensorValues)
-    # 1
-    target1Tf  = almath.Transform(currentTf)
-    target1Tf.r1_c4 += 0.00 # x?
+    currentTf = motionProxy.getTransform(arm, frame, useSensorValues)
+
+    # 1 - arm ready out front
+    target1Tf = almath.Transform(currentTf)
+    target1Tf.r1_c4 += 0.05 # x
     target1Tf.r2_c4 += 0.00 # y
     target1Tf.r3_c4 += 0.00 # z
 
-    # 2
-    target2Tf  = almath.Transform(currentTf)
-    target2Tf.r1_c4 += 0.20 # x?
-    target2Tf.r2_c4 -= 0.00 # y
-    target2Tf.r3_c4 += 0.20 # z
+    # 2 - arm back
+    target2Tf = almath.Transform(currentTf)
+    target2Tf.r1_c4 += 0.00
+    target2Tf.r2_c4 += 0.20
+    target2Tf.r3_c4 += 0.20
 
-    pathLArm.append(list(target1Tf.toVector()))
-    pathLArm.append(list(target2Tf.toVector()))
-    pathLArm.append(list(target1Tf.toVector()))
-    pathLArm.append(list(target2Tf.toVector()))
-    pathLArm.append(list(target1Tf.toVector()))
+    # 3 - arm to ball using ball.y
+    target3Tf = almath.Transform(currentTf)
+    target3Tf.r1_c4 += 0.05
+    target3Tf.r2_c4 += 0.00
+    target3Tf.r3_c4 += 0.10
 
-    # pathRArm
-    pathRArm = []
-    currentTf = motionProxy.getTransform("RArm", frame, useSensorValues)
-    # 1
-    target1Tf  = almath.Transform(currentTf)
-    target1Tf.r1_c4 += 0.00 # x?
-    target1Tf.r2_c4 += 0.00 # y
-    target1Tf.r3_c4 += 0.00 # z
+    pathArm.append(list(target1Tf.toVector()))
+    pathArm.append(list(target2Tf.toVector()))
+    pathArm.append(list(target1Tf.toVector()))
 
-    # 2
-    target2Tf  = almath.Transform(currentTf)
-    target2Tf.r1_c4 += 0.00 # x?
-    target2Tf.r2_c4 -= 0.20 # y
-    target2Tf.r3_c4 += 0.20 # z
+    pathList = [pathArm]
 
-    pathRArm.append(list(target1Tf.toVector()))
-    pathRArm.append(list(target2Tf.toVector()))
-    pathRArm.append(list(target1Tf.toVector()))
-    pathRArm.append(list(target2Tf.toVector()))
-    pathRArm.append(list(target1Tf.toVector()))
-    pathRArm.append(list(target2Tf.toVector()))
+    axisMaskList = [almath.AXIS_MASK_VEL]
 
-    pathList = [pathLArm, pathRArm]
+    coef = 1.5
+    timesList = [coef * (i + 1) for i in range(len(pathArm))]
 
-    axisMaskList = [almath.AXIS_MASK_VEL, # for "LArm"
-                    almath.AXIS_MASK_VEL] # for "RArm"
-
-    coef       = 1.5
-    timesList  = [ [coef*(i+1) for i in range(5)],  # for "LArm" in seconds
-                   [coef*(i+1) for i in range(6)] ] # for "RArm" in seconds
-
-    # called cartesian interpolation
+    # And move!
     motionProxy.transformInterpolations(effectorList, frame, pathList, axisMaskList, timesList)
+
+    # ***************************************************************
+
+    # ***************************************************************
+    
+    # effectorList = ["LArm", "RArm"]
+    # frame        = motion.FRAME_ROBOT
+
+    # # pathLArm
+    # pathLArm = []
+    # currentTf = motionProxy.getTransform("LArm", frame, useSensorValues)
+    # # 1
+    # target1Tf  = almath.Transform(currentTf)
+    # target1Tf.r1_c4 += 0.00 # x?
+    # target1Tf.r2_c4 += 0.00 # y
+    # target1Tf.r3_c4 += 0.00 # z
+
+    # # 2
+    # target2Tf  = almath.Transform(currentTf)
+    # target2Tf.r1_c4 += 0.20 # x?
+    # target2Tf.r2_c4 -= 0.00 # y
+    # target2Tf.r3_c4 += 0.20 # z
+
+    # pathLArm.append(list(target1Tf.toVector()))
+    # pathLArm.append(list(target2Tf.toVector()))
+    # pathLArm.append(list(target1Tf.toVector()))
+    # pathLArm.append(list(target2Tf.toVector()))
+    # pathLArm.append(list(target1Tf.toVector()))
+
+    # # pathRArm
+    # pathRArm = []
+    # currentTf = motionProxy.getTransform("RArm", frame, useSensorValues)
+    # # 1
+    # target1Tf  = almath.Transform(currentTf)
+    # target1Tf.r1_c4 += 0.00 # x?
+    # target1Tf.r2_c4 += 0.00 # y
+    # target1Tf.r3_c4 += 0.00 # z
+
+    # # 2
+    # target2Tf  = almath.Transform(currentTf)
+    # target2Tf.r1_c4 += 0.00 # x?
+    # target2Tf.r2_c4 -= 0.20 # y
+    # target2Tf.r3_c4 += 0.20 # z
+
+    # pathRArm.append(list(target1Tf.toVector()))
+    # pathRArm.append(list(target2Tf.toVector()))
+    # pathRArm.append(list(target1Tf.toVector()))
+    # pathRArm.append(list(target2Tf.toVector()))
+    # pathRArm.append(list(target1Tf.toVector()))
+    # pathRArm.append(list(target2Tf.toVector()))
+
+    # pathList = [pathLArm, pathRArm]
+
+    # axisMaskList = [almath.AXIS_MASK_VEL, # for "LArm"
+    #                 almath.AXIS_MASK_VEL] # for "RArm"
+
+    # coef       = 1.5
+    # timesList  = [ [coef*(i+1) for i in range(5)],  # for "LArm" in seconds
+    #                [coef*(i+1) for i in range(6)] ] # for "RArm" in seconds
+
+    # # called cartesian interpolation
+    # motionProxy.transformInterpolations(effectorList, frame, pathList, axisMaskList, timesList)
+
+    # ***************************************************************
+
+    # ***************************************************************
 
     # end define arms motions, define torso motion
 

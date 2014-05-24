@@ -9,6 +9,8 @@ from kivy.uix.button import Button
 
 from random import randint
 from time import sleep
+import almath
+import motion
 
 from naoqi import ALProxy
 
@@ -19,7 +21,7 @@ BODYLANGUAGEMODECONFIG = {"bodyLanguageMode" : "contextual"}
 
 tts = None
 animatedSpeech = None
-robotMotion = None
+motionProxy = None
 
 class NAOPongPaddle(Widget):
     score = NumericProperty(0)
@@ -40,6 +42,113 @@ class NAOPongPaddle(Widget):
                 self.sound1.play()
             elif self.player_id == "playerNAO":
                 self.sound2.play()
+
+    def startwbBalancer(self):
+        """ Starts the whole body balancer.
+
+        """
+        # Configure Whole Body Balancer:
+        # Enable whole body balancer.
+        self.iswbBalancerEnabled = True
+        motionProxy.wbEnable(self.iswbBalancerEnabled)
+        # Legs are constrained fixed.
+        # todo: might be more fun if NAO moved about when playing, maybe too slow. Investigate.
+        stateName = "Fixed"
+        supportLeg = "Legs"
+        motionProxy.wbFootState(stateName, supportLeg)
+        # Constraint Balance Motion.
+        isEnable = True
+        supportLeg = "Legs"
+        motionProxy.wbEnableBalanceConstraint(isEnable, supportLeg)
+        
+        print "wbBalancerEnabled after start: ", self.iswbBalancerEnabled
+
+        
+
+    def stopwbBalancer(self):
+        """ Stop the whole body balancer.
+
+        """
+        # Deactivate whole body
+        self.wbBalancerEnabled = False
+        motionProxy.wbEnable(self.wbBalancerEnabled)
+
+        print "wbBalancerEnabled after stop: ", self.iswbBalancerEnabled
+
+
+    def move_NAO(self, ball, court_y):
+        """ NAO moves to try and meet the ball in y plane.
+
+        """
+        
+        if ball.isBallInPlay:
+            if not self.iswbBalancerEnabled:
+                self.startwbBalancer()
+                print "Started wbBalancer"
+            
+            isAbsolute = True
+            useSensorValues = False
+
+            # Decide which arm to hit ball with. If ball on left of field use left arm, etc.
+            # todo: only do a swing once when ball close enough using ball.x
+            # todo: if ball on far side of court then do a waiting dance.
+            if ball.y < court_y / 2:
+                print "left"
+                effectorList = ["LArm"]
+                arm = "LArm"
+            else:
+                print "right"
+                effectorList = ["RArm"]
+                arm = "RArm"
+
+            
+            frame = motion.FRAME_ROBOT
+            pathArm = []
+
+            currentTf = motionProxy.getTransform(arm, frame, useSensorValues)
+
+            # 1 - arm ready out front
+            target1Tf = almath.Transform(currentTf)
+            target1Tf.r1_c4 += 0.20 # x
+            target1Tf.r2_c4 += 0.00 # y
+            target1Tf.r3_c4 += 0.20 # z
+
+            # 2 - arm back
+            target2Tf = almath.Transform(currentTf)
+            target2Tf.r1_c4 += 0.00
+            target2Tf.r2_c4 -= 0.20
+            target2Tf.r3_c4 += 0.20
+
+            # 3 - arm to ball using ball.y
+            target3Tf = almath.Transform(currentTf)
+            target3Tf.r1_c4 += 0.20
+            target3Tf.r2_c4 += 0.00
+            target3Tf.r3_c4 += 0.20
+
+            pathArm.append(list(target1Tf.toVector()))
+            pathArm.append(list(target2Tf.toVector()))
+            pathArm.append(list(target3Tf.toVector()))
+
+            pathList = [pathArm]
+
+            axisMaskList = [almath.AXIS_MASK_VEL]
+
+            coef = 1.5
+            timesList = [coef * (i + 1) for i in range(len(pathArm))]
+
+            # And move!
+            try:
+                motionProxy.post.transformInterpolations(effectorList, frame, pathList, axisMaskList, timesList)
+            except:
+                pass
+
+            # todo: move
+            print "moving ..... ball.y: {} ball.isBallInPlay: {}".format(ball.y, ball.isBallInPlay)
+
+        else:
+            self.stopwbBalancer()
+            print "Stopped wbBalancer"
+        
             
             
 
@@ -62,12 +171,14 @@ class NAOPongGame(Widget):
     def serve_ball(self, vel=(4, 0)):
         self.ball.center = self.center
         self.ball.velocity = Vector(4, 0).rotate(randint(0, 360))
+        self.ball.isBallInPlay = True
     
     def update(self, dt):
         # Call ball.move and other stuff.
         self.ball.move()
         
         # todo: update self.playerNAO.center_y based on NAOs current position
+
   
         # Bounce of paddles.
         self.player1.bounce_ball(self.ball)
@@ -79,19 +190,30 @@ class NAOPongGame(Widget):
             
         # Went off to side to score point.
         if self.ball.x < self.x:
+            self.ball.isBallInPlay = False
+            # Call nao_update to ensure wbBalancer turned off.
+            self.nao_update()
             id = animatedSpeech.post.say("I win!", BODYLANGUAGEMODECONFIG)
             animatedSpeech.wait(id, 0)
             self.playerNAO.score += 1
             self.serve_ball(vel=(4, 0))
         if self.ball.x > self.width:
+            self.ball.isBallInPlay = False
+            # Call nao_update to ensure wbBalancer turned off.
+            self.nao_update()
             id = animatedSpeech.post.say("Ouch", BODYLANGUAGEMODECONFIG)
             animatedSpeech.wait(id, 0)
             self.player1.score += 1
             self.serve_ball(vel=(-4, 0))
             
-        # todo: start NAO moving to current ball.y position, use post
+    def nao_update(self, dt = 0):
+        """ Update method for NAO to allow seperate control of NAO from game.
 
-        #print "ball.x: {}, x: {}, ball.y: {}, y: {}".format(self.ball.x, self.x, self.ball.y, self.y)
+        """
+        # todo: start NAO moving to current ball.y position, use post
+        self.playerNAO.move_NAO(self.ball, self.height)
+
+        #print "ball.x: {}, height: {}, ball.y: {}, width: {}".format(self.ball.x, self.height, self.ball.y, self.width)
             
     def on_touch_move(self, touch):
         if touch.x < self.width / 3:
@@ -103,9 +225,12 @@ class NAOPongGame(Widget):
 class NAOPongApp(App):
     def build(self):
 
+        nao_update_dt = 0.5
+
         game = NAOPongGame()
         game.serve_ball()
         Clock.schedule_interval(game.update, 1.0 / 60.0)
+        Clock.schedule_interval(game.nao_update, nao_update_dt)
         
         restartButton = Button(text = 'Restart!', center_x = game.width * 7, background_color = (1, 1, 1, 0.5))
         
@@ -129,7 +254,7 @@ def NAO_setup():
     # Define globals for holding proxies.
     global tts
     global animatedSpeech
-    global robotMotion
+    global motionProxy
 
     # Setup proxies.
     try:
@@ -141,12 +266,21 @@ def NAO_setup():
     except Exception, e:
         print "Could not setup animatedSpeech, error: ", e
     try:
-        robotMotion = ALProxy("ALMotion", NAO_IP, 9559)
+        motionProxy = ALProxy("ALMotion", NAO_IP, 9559)
     except Exception, e:
-        print "Could not setup robotMotion, error: ", e
+        print "Could not setup motionProxy, error: ", e
+    try:
+        postureProxy = ALProxy("ALRobotPosture", NAO_IP, 9559)
+    except Exception, e:
+        print "Could not setup postureProxy, error: ", e
 
     # Wake NAO up.
-    robotMotion.wakeUp()
+    motionProxy.wakeUp()
+
+    # Stand up.
+    postureProxy.goToPosture("StandInit", 0.5)
+
+    
 
 def NAO_instructions():
     """ Provides game instructions.
