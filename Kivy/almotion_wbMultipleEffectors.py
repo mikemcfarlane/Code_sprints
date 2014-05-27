@@ -52,33 +52,34 @@ def main(robotIP, PORT=9559):
     # Arms motion
     effectorList = ["LArm"]
     arm = "LArm"
+    axisDirection = 1    # +1 for LArm, -1 for RArm
 
-    frame = motion.FRAME_ROBOT
+    frame = motion.FRAME_TORSO
     pathArm = []
 
     currentTf = motionProxy.getTransform(arm, frame, useSensorValues)
 
     # 1 - arm ready out front
     target1Tf = almath.Transform(currentTf)
-    target1Tf.r1_c4 += 0.05 # x
-    target1Tf.r2_c4 += 0.00 # y
+    target1Tf.r1_c4 += 0.00 # x
+    target1Tf.r2_c4 += 0.00 * axisDirection # y
     target1Tf.r3_c4 += 0.00 # z
 
     # 2 - arm back
     target2Tf = almath.Transform(currentTf)
-    target2Tf.r1_c4 += 0.00
-    target2Tf.r2_c4 += 0.20
-    target2Tf.r3_c4 += 0.20
+    target2Tf.r1_c4 -= 0.05
+    target2Tf.r2_c4 += 0.05
+    target2Tf.r3_c4 += 0.00
 
     # 3 - arm to ball using ball.y
     target3Tf = almath.Transform(currentTf)
-    target3Tf.r1_c4 += 0.05
-    target3Tf.r2_c4 += 0.00
-    target3Tf.r3_c4 += 0.10
+    target3Tf.r1_c4 += 0.00
+    target3Tf.r2_c4 += 0.00 * axisDirection
+    target3Tf.r3_c4 += 0.00
 
     pathArm.append(list(target1Tf.toVector()))
     pathArm.append(list(target2Tf.toVector()))
-    pathArm.append(list(target1Tf.toVector()))
+    pathArm.append(list(target3Tf.toVector()))
 
     pathList = [pathArm]
 
@@ -88,7 +89,7 @@ def main(robotIP, PORT=9559):
     timesList = [coef * (i + 1) for i in range(len(pathArm))]
 
     # And move!
-    motionProxy.transformInterpolations(effectorList, frame, pathList, axisMaskList, timesList)
+    motionProxy.transformInterpolations(effectorList, frame, pathArm, axisMaskList, timesList)
 
     # ***************************************************************
 
@@ -208,7 +209,7 @@ def main(robotIP, PORT=9559):
     motionProxy.wbEnable(isEnabled)
 
     # Send robot to Pose Init
-    postureProxy.goToPosture("StandInit", 0.3)
+    postureProxy.goToPosture("StandInit", 0.5)
 
     # Go to rest position
     motionProxy.rest()

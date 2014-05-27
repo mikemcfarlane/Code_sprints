@@ -86,7 +86,6 @@ class NAOPongPaddle(Widget):
                 self.startwbBalancer()
                 print "Started wbBalancer"
             
-            isAbsolute = True
             useSensorValues = False
 
             # Decide which arm to hit ball with. If ball on left of field use left arm, etc.
@@ -94,51 +93,84 @@ class NAOPongPaddle(Widget):
             # todo: if ball on far side of court then do a waiting dance.
             if ball.y < court_y / 2:
                 print "left"
-                effectorList = ["LArm"]
-                arm = "LArm"
+                effectorList = ["LArm", "RArm"]
+                armHitter = "LArm"
+                armBalancer = "RArm"
+                yAxisDirection = 1
             else:
                 print "right"
-                effectorList = ["RArm"]
-                arm = "RArm"
+                effectorList = ["RArm", "LArm"]
+                armHitter = "RArm"
+                armBalancer = "LArm"
+                yAxisDirection = -1
 
             
-            frame = motion.FRAME_ROBOT
-            pathArm = []
+            frame = motion.FRAME_WORLD
+            pathArmHitter = []
+            pathArmBalancer = []
 
-            currentTf = motionProxy.getTransform(arm, frame, useSensorValues)
+            currentTf = motionProxy.getTransform(armHitter, frame, useSensorValues)
 
-            # 1 - arm ready out front
+            # 1 - Hitting arm ready out front
             target1Tf = almath.Transform(currentTf)
-            target1Tf.r1_c4 += 0.20 # x
-            target1Tf.r2_c4 += 0.00 # y
-            target1Tf.r3_c4 += 0.20 # z
+            target1Tf.r1_c4 += 0.05 # x
+            target1Tf.r2_c4 += 0.00 * yAxisDirection # y
+            target1Tf.r3_c4 += 0.00 # z
 
-            # 2 - arm back
+            # 2 - Hitting arm back
             target2Tf = almath.Transform(currentTf)
             target2Tf.r1_c4 += 0.00
-            target2Tf.r2_c4 -= 0.20
-            target2Tf.r3_c4 += 0.20
+            target2Tf.r2_c4 += 0.15 * yAxisDirection
+            target2Tf.r3_c4 += 0.15
 
-            # 3 - arm to ball using ball.y
+            # 3 - Hitting arm to ball using ball.y
             target3Tf = almath.Transform(currentTf)
-            target3Tf.r1_c4 += 0.20
-            target3Tf.r2_c4 += 0.00
-            target3Tf.r3_c4 += 0.20
+            target3Tf.r1_c4 += 0.05
+            target3Tf.r2_c4 += 0.00 * yAxisDirection
+            target3Tf.r3_c4 += 0.10
 
-            pathArm.append(list(target1Tf.toVector()))
-            pathArm.append(list(target2Tf.toVector()))
-            pathArm.append(list(target3Tf.toVector()))
+            pathArmHitter.append(list(target1Tf.toVector()))
+            pathArmHitter.append(list(target2Tf.toVector()))
+            pathArmHitter.append(list(target3Tf.toVector()))
 
-            pathList = [pathArm]
+            currentTf = motionProxy.getTransform(armBalancer, frame, useSensorValues)
 
-            axisMaskList = [almath.AXIS_MASK_VEL]
+            # 1 - Balancing arm ready out front
+            target1Tf = almath.Transform(currentTf)
+            target1Tf.r1_c4 += 0.05
+            target1Tf.r2_c4 += 0.00 * yAxisDirection
+            target1Tf.r3_c4 += 0.00
+
+            # 2 - Balancing arm back
+            target2Tf = almath.Transform(currentTf)
+            target2Tf.r1_c4 += 0.00
+            target2Tf.r2_c4 += 0.00 * yAxisDirection
+            target2Tf.r3_c4 += 0.00
+
+            # 3 - Balancing arm return to front
+            target3Tf = almath.Transform(currentTf)
+            target3Tf.r1_c4 += 0.05
+            target3Tf.r2_c4 += 0.00 * yAxisDirection
+            target3Tf.r3_c4 += 0.00
+
+            pathArmBalancer.append(list(target1Tf.toVector()))
+            pathArmBalancer.append(list(target2Tf.toVector()))
+            pathArmBalancer.append(list(target3Tf.toVector()))
+
+            pathList = [pathArmHitter, pathArmBalancer]
+
+            axisMaskList = [almath.AXIS_MASK_VEL, # For hitting arm.
+                            almath.AXIS_MASK_VEL] # For balancing arm.
 
             coef = 1.5
-            timesList = [coef * (i + 1) for i in range(len(pathArm))]
+            timesList = [[coef * (i + 1) for i in range(len(pathArmHitter))], 
+                        [coef * (i + 1) for i in range(len(pathArmBalancer))]]
 
             # And move!
             try:
-                motionProxy.post.transformInterpolations(effectorList, frame, pathList, axisMaskList, timesList)
+                # Don't wait, use an isRunning flag to prevent queuing moves up.
+                id = motionProxy.post.transformInterpolations(effectorList, frame, pathList, axisMaskList, timesList)
+                motionProxy.wait(id, 0)
             except:
                 pass
 
@@ -225,7 +257,7 @@ class NAOPongGame(Widget):
 class NAOPongApp(App):
     def build(self):
 
-        nao_update_dt = 0.5
+        nao_update_dt = 0.25
 
         game = NAOPongGame()
         game.serve_ball()
