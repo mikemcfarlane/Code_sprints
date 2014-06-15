@@ -22,12 +22,16 @@ BODYLANGUAGEMODECONFIG = {"bodyLanguageMode" : "contextual"}
 tts = None
 animatedSpeech = None
 motionProxy = None
+postureProxy = None
+
 
 class NAOPongPaddle(Widget):
     score = NumericProperty(0)
 
     sound1 = SoundLoader.load('Sounds/bipReco1.wav')
     sound2 = SoundLoader.load('Sounds/bipReco2.wav')
+
+
     
     def bounce_ball(self, ball):
         # print "ball:", self.player_id
@@ -75,6 +79,25 @@ class NAOPongPaddle(Widget):
 
         print "wbBalancerEnabled after stop: ", self.iswbBalancerEnabled
 
+    def getCurrentTransform(self):
+        """ Gets the current position transform for left and right arms.
+
+        """
+        # Go to known position. Stand up.
+        postureProxy.goToPosture("StandInit", 0.5)
+
+        # Get the robot position transforms in a known position.
+        arm = "LArm"
+        frame = motion.FRAME_WORLD
+        useSensorValues = False
+        self.currentTfLeft = motionProxy.getTransform(arm, frame, useSensorValues)
+
+        arm = "RArm"
+        self.currentTfRight = motionProxy.getTransform(arm, frame, useSensorValues)
+
+        print "Got new body position transform."
+
+
 
     def move_NAO(self, ball, court_y):
         """ NAO moves to try and meet the ball in y plane.
@@ -84,28 +107,32 @@ class NAOPongPaddle(Widget):
         if ball.isBallInPlay:
             if not self.iswbBalancerEnabled:
                 self.startwbBalancer()
+                
                 print "Started wbBalancer"
+
             
-            useSensorValues = False
+            # useSensorValues = False
 
             # Decide which arm to hit ball with. If ball on left of field use left arm, etc.
-            # todo: only do a swing once when ball close enough using ball.x
-            # todo: if ball on far side of court then do a waiting dance.
+            # todo: only do a swing once when ball close enough using ball.x or ball velocity
+            # todo: if ball on far side of court then do a waiting dance.            
             if ball.y < court_y / 2:
-                print "left"
+                # print "left"
                 effectorList = ["LArm", "RArm"]
                 armHitter = "LArm"
                 armBalancer = "RArm"
                 yAxisDirection = 1
+                # self.currentTf = list(self.currentTfLeft)
             else:
-                print "right"
+                # print "right"
                 effectorList = ["RArm", "LArm"]
                 armHitter = "RArm"
                 armBalancer = "LArm"
                 yAxisDirection = -1
+                # self.currentTf = list(self.currentTfRight)
 
-            
             frame = motion.FRAME_WORLD
+            useSensorValues = False
             pathArmHitter = []
             pathArmBalancer = []
 
@@ -168,14 +195,13 @@ class NAOPongPaddle(Widget):
 
             # And move!
             try:
-                # Don't wait, use an isRunning flag to prevent queuing moves up.
                 id = motionProxy.post.transformInterpolations(effectorList, frame, pathList, axisMaskList, timesList)
                 motionProxy.wait(id, 0)
             except:
                 pass
 
             # todo: move
-            print "moving ..... ball.y: {} ball.isBallInPlay: {}".format(ball.y, ball.isBallInPlay)
+            # print "moving ..... ball.y: {} ball.isBallInPlay: {}".format(ball.y, ball.isBallInPlay)
 
         else:
             self.stopwbBalancer()
@@ -223,16 +249,14 @@ class NAOPongGame(Widget):
         # Went off to side to score point.
         if self.ball.x < self.x:
             self.ball.isBallInPlay = False
-            # Call nao_update to ensure wbBalancer turned off.
-            self.nao_update()
+            
             id = animatedSpeech.post.say("I win!", BODYLANGUAGEMODECONFIG)
             animatedSpeech.wait(id, 0)
             self.playerNAO.score += 1
             self.serve_ball(vel=(4, 0))
         if self.ball.x > self.width:
             self.ball.isBallInPlay = False
-            # Call nao_update to ensure wbBalancer turned off.
-            self.nao_update()
+            
             id = animatedSpeech.post.say("Ouch", BODYLANGUAGEMODECONFIG)
             animatedSpeech.wait(id, 0)
             self.player1.score += 1
@@ -287,6 +311,7 @@ def NAO_setup():
     global tts
     global animatedSpeech
     global motionProxy
+    global postureProxy
 
     # Setup proxies.
     try:
@@ -312,7 +337,8 @@ def NAO_setup():
     # Stand up.
     postureProxy.goToPosture("StandInit", 0.5)
 
-    
+
+     
 
 def NAO_instructions():
     """ Provides game instructions.
