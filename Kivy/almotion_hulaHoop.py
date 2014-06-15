@@ -25,7 +25,7 @@ def main(robotIP, PORT=9559):
     postureProxy.goToPosture("StandInit", 0.5)
 
     # end go to Stand Init, begin define control point
-    effector        = "RArm"
+    effector        = "Torso"
     frame           =  motion.FRAME_ROBOT
     axisMask        = almath.AXIS_MASK_ALL
     isAbsolute      = True

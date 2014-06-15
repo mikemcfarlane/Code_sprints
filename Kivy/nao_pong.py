@@ -31,7 +31,6 @@ class NAOPongPaddle(Widget):
     sound1 = SoundLoader.load('Sounds/bipReco1.wav')
     sound2 = SoundLoader.load('Sounds/bipReco2.wav')
 
-
     
     def bounce_ball(self, ball):
         # print "ball:", self.player_id
@@ -83,8 +82,10 @@ class NAOPongPaddle(Widget):
         """ Gets the current position transform for left and right arms.
 
         """
+        self.hasCurrentTransform = True
         # Go to known position. Stand up.
-        postureProxy.goToPosture("StandInit", 0.5)
+        id = postureProxy.post.goToPosture("StandInit", 0.5)
+        postureProxy.wait(id, 0)
 
         # Get the robot position transforms in a known position.
         arm = "LArm"
@@ -103,12 +104,19 @@ class NAOPongPaddle(Widget):
         """ NAO moves to try and meet the ball in y plane.
 
         """
+
+        print "isBallInPlay: ", ball.isBallInPlay
+        print "iswbBalancerEnabled: ", self.iswbBalancerEnabled
+        print "hasCurrentTransform: ", self.hasCurrentTransform
         
         if ball.isBallInPlay:
             if not self.iswbBalancerEnabled:
                 self.startwbBalancer()
-                
                 print "Started wbBalancer"
+
+            if not self.hasCurrentTransform:
+                self.getCurrentTransform()
+                print "Got current transform"
 
             
             # useSensorValues = False
@@ -117,41 +125,43 @@ class NAOPongPaddle(Widget):
             # todo: only do a swing once when ball close enough using ball.x or ball velocity
             # todo: if ball on far side of court then do a waiting dance.            
             if ball.y < court_y / 2:
-                # print "left"
+                print "left"
                 effectorList = ["LArm", "RArm"]
                 armHitter = "LArm"
                 armBalancer = "RArm"
                 yAxisDirection = 1
-                # self.currentTf = list(self.currentTfLeft)
+                self.currentTfHitter = list(self.currentTfLeft)
+                self.currentTfBalancer = list(self.currentTfRight)
             else:
-                # print "right"
+                print "right"
                 effectorList = ["RArm", "LArm"]
                 armHitter = "RArm"
                 armBalancer = "LArm"
                 yAxisDirection = -1
-                # self.currentTf = list(self.currentTfRight)
+                self.currentTfHitter = list(self.currentTfRight)
+                self.currentTfBalancer = list(self.currentTfLeft)
 
             frame = motion.FRAME_WORLD
             useSensorValues = False
             pathArmHitter = []
             pathArmBalancer = []
 
-            currentTf = motionProxy.getTransform(armHitter, frame, useSensorValues)
+            # currentTf = motionProxy.getTransform(armHitter, frame, useSensorValues)
 
             # 1 - Hitting arm ready out front
-            target1Tf = almath.Transform(currentTf)
+            target1Tf = almath.Transform(self.currentTfHitter)
             target1Tf.r1_c4 += 0.05 # x
             target1Tf.r2_c4 += 0.00 * yAxisDirection # y
             target1Tf.r3_c4 += 0.00 # z
 
             # 2 - Hitting arm back
-            target2Tf = almath.Transform(currentTf)
+            target2Tf = almath.Transform(self.currentTfHitter)
             target2Tf.r1_c4 += 0.00
             target2Tf.r2_c4 += 0.15 * yAxisDirection
             target2Tf.r3_c4 += 0.15
 
             # 3 - Hitting arm to ball using ball.y
-            target3Tf = almath.Transform(currentTf)
+            target3Tf = almath.Transform(self.currentTfHitter)
             target3Tf.r1_c4 += 0.05
             target3Tf.r2_c4 += 0.00 * yAxisDirection
             target3Tf.r3_c4 += 0.10
@@ -160,22 +170,22 @@ class NAOPongPaddle(Widget):
             pathArmHitter.append(list(target2Tf.toVector()))
             pathArmHitter.append(list(target3Tf.toVector()))
 
-            currentTf = motionProxy.getTransform(armBalancer, frame, useSensorValues)
+            # currentTf = motionProxy.getTransform(armBalancer, frame, useSensorValues)
 
             # 1 - Balancing arm ready out front
-            target1Tf = almath.Transform(currentTf)
+            target1Tf = almath.Transform(self.currentTfBalancer)
             target1Tf.r1_c4 += 0.05
             target1Tf.r2_c4 += 0.00 * yAxisDirection
             target1Tf.r3_c4 += 0.00
 
             # 2 - Balancing arm back
-            target2Tf = almath.Transform(currentTf)
+            target2Tf = almath.Transform(self.currentTfBalancer)
             target2Tf.r1_c4 += 0.00
             target2Tf.r2_c4 += 0.00 * yAxisDirection
             target2Tf.r3_c4 += 0.00
 
             # 3 - Balancing arm return to front
-            target3Tf = almath.Transform(currentTf)
+            target3Tf = almath.Transform(self.currentTfBalancer)
             target3Tf.r1_c4 += 0.05
             target3Tf.r2_c4 += 0.00 * yAxisDirection
             target3Tf.r3_c4 += 0.00
@@ -195,17 +205,19 @@ class NAOPongPaddle(Widget):
 
             # And move!
             try:
-                id = motionProxy.post.transformInterpolations(effectorList, frame, pathList, axisMaskList, timesList)
-                motionProxy.wait(id, 0)
+                # id = motionProxy.post.transformInterpolations(effectorList, frame, pathList, axisMaskList, timesList)
+                # motionProxy.wait(id, 0)
+                pass
             except:
                 pass
 
             # todo: move
             # print "moving ..... ball.y: {} ball.isBallInPlay: {}".format(ball.y, ball.isBallInPlay)
 
-        else:
+        elif not ball.isBallInPlay:
             self.stopwbBalancer()
             print "Stopped wbBalancer"
+            self.hasCurrentTransform = False
         
             
             
@@ -249,14 +261,18 @@ class NAOPongGame(Widget):
         # Went off to side to score point.
         if self.ball.x < self.x:
             self.ball.isBallInPlay = False
-            
+            print "isBallInPlay - update: ", self.ball.isBallInPlay
+            sleep(1)
+            print "isBallInPlay - update: ", self.ball.isBallInPlay
             id = animatedSpeech.post.say("I win!", BODYLANGUAGEMODECONFIG)
             animatedSpeech.wait(id, 0)
             self.playerNAO.score += 1
             self.serve_ball(vel=(4, 0))
         if self.ball.x > self.width:
             self.ball.isBallInPlay = False
-            
+            print "isBallInPlay - update: ", self.ball.isBallInPlay
+            sleep(1)
+            print "isBallInPlay - update: ", self.ball.isBallInPlay
             id = animatedSpeech.post.say("Ouch", BODYLANGUAGEMODECONFIG)
             animatedSpeech.wait(id, 0)
             self.player1.score += 1
@@ -281,10 +297,11 @@ class NAOPongGame(Widget):
 class NAOPongApp(App):
     def build(self):
 
-        nao_update_dt = 0.25
+        nao_update_dt = 1.0 / 60
 
         game = NAOPongGame()
         game.serve_ball()
+
         Clock.schedule_interval(game.update, 1.0 / 60.0)
         Clock.schedule_interval(game.nao_update, nao_update_dt)
         
