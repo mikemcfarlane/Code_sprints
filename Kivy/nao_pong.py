@@ -27,6 +27,7 @@ postureProxy = None
 
 class NAOPongPaddle(Widget):
     score = NumericProperty(0)
+    ball = ObjectProperty(None)
 
     sound1 = SoundLoader.load('Sounds/bipReco1.wav')
     sound2 = SoundLoader.load('Sounds/bipReco2.wav')
@@ -100,16 +101,16 @@ class NAOPongPaddle(Widget):
 
 
 
-    def move_NAO(self, ball, court_y):
+    def move_NAO(self, court_y):
         """ NAO moves to try and meet the ball in y plane.
 
         """
 
-        print "isBallInPlay: ", ball.isBallInPlay
-        print "iswbBalancerEnabled: ", self.iswbBalancerEnabled
-        print "hasCurrentTransform: ", self.hasCurrentTransform
+        print "isBallInPlay - move_NAO: ", self.ball.isBallInPlay
+        print "iswbBalancerEnabled - move_NAO: ", self.iswbBalancerEnabled
+        print "hasCurrentTransform - move_NAO: ", self.hasCurrentTransform
         
-        if ball.isBallInPlay:
+        if self.ball.isBallInPlay:
             if not self.iswbBalancerEnabled:
                 self.startwbBalancer()
                 print "Started wbBalancer"
@@ -205,8 +206,8 @@ class NAOPongPaddle(Widget):
 
             # And move!
             try:
-                # id = motionProxy.post.transformInterpolations(effectorList, frame, pathList, axisMaskList, timesList)
-                # motionProxy.wait(id, 0)
+                id = motionProxy.post.transformInterpolations(effectorList, frame, pathList, axisMaskList, timesList)
+                motionProxy.wait(id, 0)
                 pass
             except:
                 pass
@@ -214,7 +215,7 @@ class NAOPongPaddle(Widget):
             # todo: move
             # print "moving ..... ball.y: {} ball.isBallInPlay: {}".format(ball.y, ball.isBallInPlay)
 
-        elif not ball.isBallInPlay:
+        elif not self.ball.isBallInPlay:
             self.stopwbBalancer()
             print "Stopped wbBalancer"
             self.hasCurrentTransform = False
@@ -257,22 +258,20 @@ class NAOPongGame(Widget):
         # Bounce off top or bottom.
         if (self.ball.y < self.y) or (self.ball.top > self.top):
             self.ball.velocity_y *= -1
+
+        print "isBallInPlay - update - in play: ", self.ball.isBallInPlay
             
         # Went off to side to score point.
         if self.ball.x < self.x:
             self.ball.isBallInPlay = False
-            print "isBallInPlay - update: ", self.ball.isBallInPlay
-            sleep(1)
-            print "isBallInPlay - update: ", self.ball.isBallInPlay
+            print "isBallInPlay - update - out of play: ", self.ball.isBallInPlay
             id = animatedSpeech.post.say("I win!", BODYLANGUAGEMODECONFIG)
             animatedSpeech.wait(id, 0)
             self.playerNAO.score += 1
             self.serve_ball(vel=(4, 0))
         if self.ball.x > self.width:
             self.ball.isBallInPlay = False
-            print "isBallInPlay - update: ", self.ball.isBallInPlay
-            sleep(1)
-            print "isBallInPlay - update: ", self.ball.isBallInPlay
+            print "isBallInPlay - update - out of play: ", self.ball.isBallInPlay
             id = animatedSpeech.post.say("Ouch", BODYLANGUAGEMODECONFIG)
             animatedSpeech.wait(id, 0)
             self.player1.score += 1
@@ -283,7 +282,7 @@ class NAOPongGame(Widget):
 
         """
         # todo: start NAO moving to current ball.y position, use post
-        self.playerNAO.move_NAO(self.ball, self.height)
+        self.playerNAO.move_NAO(self.height)
 
         #print "ball.x: {}, height: {}, ball.y: {}, width: {}".format(self.ball.x, self.height, self.ball.y, self.width)
             
