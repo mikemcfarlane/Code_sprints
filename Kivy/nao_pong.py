@@ -23,6 +23,7 @@ tts = None
 animatedSpeech = None
 motionProxy = None
 postureProxy = None
+memoryProxy = None
 
 
 class NAOPongPaddle(Widget):
@@ -31,11 +32,9 @@ class NAOPongPaddle(Widget):
     sound1 = SoundLoader.load('Sounds/bipReco1.wav')
     sound2 = SoundLoader.load('Sounds/bipReco2.wav')
 
-
+    global memoryProxy
     
     def bounce_ball(self, ball):
-        # print "ball:", self.player_id
-        
         if self.collide_widget(ball):
             vx, vy = ball.velocity
             offset = (ball.center_y - self.center_y) / (self.height / 2)
@@ -74,8 +73,8 @@ class NAOPongPaddle(Widget):
 
         """
         # Deactivate whole body
-        self.wbBalancerEnabled = False
-        motionProxy.wbEnable(self.wbBalancerEnabled)
+        self.iswbBalancerEnabled = False
+        motionProxy.wbEnable(self.iswbBalancerEnabled)
 
         print "wbBalancerEnabled after stop: ", self.iswbBalancerEnabled
 
@@ -103,8 +102,11 @@ class NAOPongPaddle(Widget):
         """ NAO moves to try and meet the ball in y plane.
 
         """
+
+        print "isBallInPlay, move_NAO: ", memoryProxy.getData("isBallInPlay")
+        # print "ball.x {} ball.y {} bounce_ball: ".format(ball.x, ball.y)
         
-        if ball.isBallInPlay:
+        if memoryProxy.getData("isBallInPlay"):
             if not self.iswbBalancerEnabled:
                 self.startwbBalancer()
                 
@@ -194,11 +196,11 @@ class NAOPongPaddle(Widget):
                         [coef * (i + 1) for i in range(len(pathArmBalancer))]]
 
             # And move!
-            try:
-                id = motionProxy.post.transformInterpolations(effectorList, frame, pathList, axisMaskList, timesList)
-                motionProxy.wait(id, 0)
-            except:
-                pass
+            # try:
+            #     id = motionProxy.post.transformInterpolations(effectorList, frame, pathList, axisMaskList, timesList)
+            #     motionProxy.wait(id, 0)
+            # except:
+            #     pass
 
             # todo: move
             # print "moving ..... ball.y: {} ball.isBallInPlay: {}".format(ball.y, ball.isBallInPlay)
@@ -224,12 +226,14 @@ class NAOPongGame(Widget):
     player1 = ObjectProperty(None)
     playerNAO = ObjectProperty(None)
 
-    global tts
-    
+    global memoryProxy
+        
     def serve_ball(self, vel=(4, 0)):
         self.ball.center = self.center
         self.ball.velocity = Vector(4, 0).rotate(randint(0, 360))
-        self.ball.isBallInPlay = True
+        memoryProxy.insertData("isBallInPlay", True)
+        print "isBallInPlay, serve: ", memoryProxy.getData("isBallInPlay")
+        print "SERVED!"
     
     def update(self, dt):
         # Call ball.move and other stuff.
@@ -248,28 +252,30 @@ class NAOPongGame(Widget):
             
         # Went off to side to score point.
         if self.ball.x < self.x:
-            self.ball.isBallInPlay = False
+            memoryProxy.insertData("isBallInPlay", False)
+            print "isBallInPlay, update: ", memoryProxy.getData("isBallInPlay")
             
             id = animatedSpeech.post.say("I win!", BODYLANGUAGEMODECONFIG)
             animatedSpeech.wait(id, 0)
             self.playerNAO.score += 1
             self.serve_ball(vel=(4, 0))
         if self.ball.x > self.width:
-            self.ball.isBallInPlay = False
+            memoryProxy.insertData("isBallInPlay", False)
+            print "isBallInPlay, update: ", memoryProxy.getData("isBallInPlay")
             
             id = animatedSpeech.post.say("Ouch", BODYLANGUAGEMODECONFIG)
             animatedSpeech.wait(id, 0)
             self.player1.score += 1
             self.serve_ball(vel=(-4, 0))
             
-    def nao_update(self, dt = 0):
+    def nao_update(self, dt):
         """ Update method for NAO to allow seperate control of NAO from game.
 
         """
         # todo: start NAO moving to current ball.y position, use post
         self.playerNAO.move_NAO(self.ball, self.height)
 
-        #print "ball.x: {}, height: {}, ball.y: {}, width: {}".format(self.ball.x, self.height, self.ball.y, self.width)
+        # print "ball.x: {}, height: {}, ball.y: {}, width: {}".format(self.ball.x, self.height, self.ball.y, self.width)
             
     def on_touch_move(self, touch):
         if touch.x < self.width / 3:
@@ -281,13 +287,14 @@ class NAOPongGame(Widget):
 class NAOPongApp(App):
     def build(self):
 
-        nao_update_dt = 0.25
+        nao_update_dt = 1.0/60.0
 
         game = NAOPongGame()
         game.serve_ball()
         Clock.schedule_interval(game.update, 1.0 / 60.0)
         Clock.schedule_interval(game.nao_update, nao_update_dt)
         
+        # restart button
         restartButton = Button(text = 'Restart!', center_x = game.width * 7, background_color = (1, 1, 1, 0.5))
         
         game.add_widget(restartButton)
@@ -299,6 +306,25 @@ class NAOPongApp(App):
             game.serve_ball()
 
         restartButton.bind(on_release = restart_game)
+
+        # stop game button
+        stopButton = Button(text = 'Stop!', center_x = game.width * 2, background_color = (1, 1, 1, 0.5))
+        game.add_widget(stopButton)
+
+        def stop_game(obj):
+            print "stop"
+            try:
+                NAOPongApp().stop()
+            except Exception, e:
+                print "Stopping error: ", e
+            sleep(0.5)
+            memoryProxy.insertData("isBallInPlay", False)
+            game.playerNAO.stopwbBalancer()
+            id = animatedSpeech.post.say("Bye bye", BODYLANGUAGEMODECONFIG)
+            animatedSpeech.wait(id, 0)
+            
+
+        stopButton.bind(on_release = stop_game)
         
         return game
 
@@ -312,6 +338,7 @@ def NAO_setup():
     global animatedSpeech
     global motionProxy
     global postureProxy
+    global memoryProxy
 
     # Setup proxies.
     try:
@@ -330,12 +357,19 @@ def NAO_setup():
         postureProxy = ALProxy("ALRobotPosture", NAO_IP, 9559)
     except Exception, e:
         print "Could not setup postureProxy, error: ", e
+    try:
+        memoryProxy = ALProxy("ALMemory", NAO_IP, 9559)
+    except Exception, e:
+        print "Could not setup memoryProxy, error: ", e
 
     # Wake NAO up.
     motionProxy.wakeUp()
 
     # Stand up.
     postureProxy.goToPosture("StandInit", 0.5)
+
+    # Default state for isBallInPlay
+    memoryProxy.insertData("isBallInPlay", False)
 
 
      

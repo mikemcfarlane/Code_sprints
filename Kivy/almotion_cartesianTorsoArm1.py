@@ -1,4 +1,7 @@
-'''Cartesian control: Multiple Effector Trajectories ***'''
+# -*- encoding: UTF-8 -*-
+
+'''Cartesian control: Multiple Effector Trajectories'''
+''' This example is only compatible with NAO '''
 
 import argparse
 import motion
@@ -66,20 +69,19 @@ def main(robotIP, PORT=9559):
     path = []
     currentTf = motionProxy.getTransform(effector, frame, useSensorValues)
     targetTf  = almath.Transform(currentTf)
-    targetTf.r1_c4 += 0.01 # x ?
-    targetTf.r2_c4 -= 0.08 # y
+    targetTf.r2_c4 -= 0.04 # y
     path.append(list(targetTf.toVector()))
     path.append(currentTf)
 
     motionProxy.transformInterpolations(effector, frame, path, axisMask, times)
 
     # Motion of Left Arm during the last half of the Torso motion
-    effector   = "RArm"
+    effector   = "LArm"
 
     path = []
     currentTf = motionProxy.getTransform(effector, frame, useSensorValues)
     targetTf  = almath.Transform(currentTf)
-    targetTf.r2_c4 += 0.08 # y
+    targetTf.r2_c4 += 0.04 # y
     path.append(list(targetTf.toVector()))
     path.append(currentTf)
 
