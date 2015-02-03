@@ -59,3 +59,12 @@ Non access modifiers:
 		+ variable x = (expression) ? value if true : value if false
 	
 	+ 'instanceof' checks if object is of a type
+
+## Data structures
+
++ Enumeration (not actually a structure, provides a way to enumerate through elements in a structure)
++ BitSet (group of flags)
++ Vector (array that can grow)
++ Stack (last in first out)
++ Dictionary (key value)
++ Hashtable (key based structure)
